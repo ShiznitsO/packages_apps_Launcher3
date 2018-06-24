@@ -19,7 +19,7 @@
 
 <resources>
     <!-- Launcher theme -->
-    <style name="BaseLauncherTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+    <style name="BaseLauncherTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:colorBackgroundCacheHint">@null</item>
         <item name="android:windowShowWallpaper">true</item>
@@ -30,7 +30,7 @@
 
     <style name="BaseLauncherThemeWithCustomAttrs" parent="@style/BaseLauncherTheme">
         <item name="allAppsScrimColor">#CCFFFFFF</item>
-        <item name="allAppsNavBarScrimColor">#66FFFFFF</item>
+        <item name="allAppsNavBarScrimColor">@color/all_apps_navbar_color</item>
         <item name="popupColorPrimary">#FFF</item>
         <item name="popupColorSecondary">#F5F5F5</item> <!-- Gray 100 -->
         <item name="popupColorTertiary">#E0E0E0</item> <!-- Gray 300 -->
@@ -42,6 +42,16 @@
         <item name="workspaceKeyShadowColor">#44000000</item>
         <item name="workspaceStatusBarScrim">@drawable/workspace_bg</item>
         <item name="widgetsTheme">@style/WidgetContainerTheme</item>
+
+        <!-- Backports -->
+        <item name="android:textColorPrimary">@color/primary_text_material_light</item>
+        <item name="android:textColorSecondary">@color/secondary_text_material_light</item>
+        <item name="android:textColorPrimaryInverse">?android:attr/textColorPrimary</item>
+        <item name="android:textColorSecondaryInverse">?android:attr/textColorSecondary</item>
+
+        <item name="android:colorPrimary">@color/colorPrimary</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
     </style>
 
     <style name="LauncherTheme" parent="@style/BaseLauncherThemeWithCustomAttrs"></style>
@@ -56,8 +66,6 @@
     </style>
 
     <style name="LauncherThemeDark" parent="@style/LauncherTheme">
-        <item name="android:textColorPrimary">#FFFFFFFF</item>
-        <item name="android:textColorSecondary">#FFFFFFFF</item>
         <item name="android:textColorTertiary">#CCFFFFFF</item>
         <item name="android:textColorHint">#A0FFFFFF</item>
         <item name="android:colorControlHighlight">#A0FFFFFF</item>
@@ -69,6 +77,11 @@
         <item name="popupColorTertiary">#757575</item> <!-- Gray 600 -->
         <item name="widgetsTheme">@style/WidgetContainerTheme.Dark</item>
         <item name="isMainColorDark">true</item>
+        <item name="workspaceStatusBarScrim">@drawable/workspace_bg_dark</item>
+
+        <!-- Backports -->
+        <item name="android:textColorPrimary">@color/primary_text_material_dark</item>
+        <item name="android:textColorSecondary">@color/secondary_text_material_dark</item>
     </style>
 
     <!--
@@ -83,13 +96,25 @@
     </style>
 
     <!-- Theme for the widget container. Overridden on API 26. -->
-    <style name="WidgetContainerTheme" parent="@android:style/Theme.DeviceDefault.Settings">
+    <style name="WidgetContainerTheme" parent="@android:style/Theme.Material.Settings">
         <item name="android:colorEdgeEffect">?android:attr/textColorSecondaryInverse</item>
         <item name="android:textColorPrimary">?android:attr/textColorPrimaryInverse</item>
         <item name="android:textColorSecondary">?android:attr/textColorSecondaryInverse</item>
+        <item name="bottomSheetNavBarColor">@color/all_apps_navbar_color</item>
+
+        <!-- Backports -->
+        <item name="android:textColorPrimaryInverse">@color/primary_text_material_light</item>
+        <item name="android:textColorSecondaryInverse">@color/secondary_text_material_light</item>
+
+        <item name="android:colorPrimary">@color/colorPrimary</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
     </style>
 
-    <style name="WidgetContainerTheme.Dark" />
+    <style name="WidgetContainerTheme.Dark" parent="LauncherThemeDark">
+        <item name="android:colorPrimaryDark">#616161</item> <!-- Gray 700 -->
+        <item name="bottomSheetNavBarColor">#00000000</item>
+    </style>
 
     <style name="FastScrollerPopup" >
         <item name="android:layout_width">wrap_content</item>
@@ -101,7 +126,7 @@
         <item name="android:alpha">0</item>
         <item name="android:elevation">3dp</item>
         <item name="android:saveEnabled">false</item>
-        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textColor">@color/fastscroller_thumb_text_color</item>
         <item name="android:includeFontPadding">false</item>
     </style>
 
@@ -174,5 +199,35 @@
         <item name="android:colorPrimary">#9AA0A6</item>
         <item name="android:colorControlHighlight">#DFE1E5</item>
         <item name="android:colorForeground">@color/all_apps_bg_hand_fill_dark</item>
+    </style>
+
+    <!-- Pixel -->
+    <style name="GoogleSearchLauncherTheme" parent="@style/LauncherTheme">
+        <item name="android:keyboardLayout">@layout/search_container_all_apps_google</item>
+    </style>
+    <style name="GoogleSearchLauncherThemeDark" parent="@style/LauncherThemeDark">
+        <item name="android:keyboardLayout">@layout/search_container_all_apps_google</item>
+    </style>
+    <style name="GoogleSearchLauncherThemeDarkText" parent="@style/LauncherThemeDarkText">
+        <item name="android:keyboardLayout">@layout/search_container_all_apps_google</item>
+    </style>
+    <style name="HotseatQsbTheme">
+        <item name="gIcon">@drawable/ic_super_g_shadow</item>
+        <item name="micIcon">@drawable/ic_mic_shadow</item>
+    </style>
+    <style name="HotseatQsbTheme.Colored" parent="@style/HotseatQsbTheme">
+        <item name="gIcon">@drawable/ic_super_g_color</item>
+        <item name="micIcon">@drawable/ic_mic_color</item>
+    </style>
+    <style name="SettingsTheme" parent="@android:style/Theme.Material.Settings">
+        <item name="android:actionBarTheme">@style/SettingsTheme.ActionBar</item>
+        <item name="android:colorPrimary">@color/colorPrimary</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="android:statusBarColor">@color/lollipopStatusBar</item>
+    </style>
+    <style name="SettingsTheme.ActionBar">
+        <item name="android:textColorPrimary">@color/colorAccent</item>
+        <item name="android:colorControlNormal">@color/colorAccent</item>
     </style>
 </resources>

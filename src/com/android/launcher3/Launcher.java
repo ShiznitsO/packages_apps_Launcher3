@@ -33,6 +33,7 @@ import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks2;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.DialogInterface;
@@ -127,6 +128,7 @@ import com.android.launcher3.util.MultiHashMap;
 import com.android.launcher3.util.PackageManagerHelper;
 import com.android.launcher3.util.PackageUserKey;
 import com.android.launcher3.util.PendingRequestArgs;
+import com.android.launcher3.util.CustomSettingsObserver;
 import com.android.launcher3.util.SystemUiController;
 import com.android.launcher3.util.TestingUtils;
 import com.android.launcher3.util.Themes;
@@ -348,6 +350,21 @@ public class Launcher extends BaseActivity
 
     private RotationPrefChangeHandler mRotationPrefChangeHandler;
 
+    private int mSystemTheme = 0;
+    private SystemThemeObserver mSettingsObserver;
+
+    private class SystemThemeObserver extends CustomSettingsObserver.System {
+        public SystemThemeObserver(ContentResolver resolver) {
+            super(resolver);
+        }
+
+        @Override
+        public void onSettingChanged(int keySettingInt) {
+            mSystemTheme = keySettingInt;
+            onThemeChanged();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (DEBUG_STRICT_MODE) {
@@ -374,7 +391,13 @@ public class Launcher extends BaseActivity
 
         WallpaperColorInfo wallpaperColorInfo = WallpaperColorInfo.getInstance(this);
         wallpaperColorInfo.setOnThemeChangeListener(this);
-        overrideTheme(wallpaperColorInfo.isDark(), wallpaperColorInfo.supportsDarkText());
+
+        mSettingsObserver = new SystemThemeObserver(this.getContentResolver());
+        mSettingsObserver.register("system_ui_theme");
+        mSystemTheme = mSettingsObserver.getSettingInt();
+        boolean forceDark = mSystemTheme == 2;
+        boolean forceLight = mSystemTheme == 1;
+        overrideTheme(wallpaperColorInfo.isDark(), wallpaperColorInfo.supportsDarkText(), forceDark, forceLight);
 
         super.onCreate(savedInstanceState);
 
@@ -494,8 +517,8 @@ public class Launcher extends BaseActivity
         recreate();
     }
 
-    protected void overrideTheme(boolean isDark, boolean supportsDarkText) {
-        if (isDark) {
+    protected void overrideTheme(boolean isDark, boolean supportsDarkText, boolean forceDark, boolean forceLight) {
+        if (isDark || forceDark) {
             setTheme(R.style.LauncherThemeDark);
         } else if (supportsDarkText) {
             setTheme(R.style.LauncherThemeDarkText);
@@ -525,12 +548,9 @@ public class Launcher extends BaseActivity
     }
 
     private void loadExtractedColorsAndColorItems() {
-        // TODO: do this in pre-N as well, once the extraction part is complete.
-        if (Utilities.ATLEAST_NOUGAT) {
-            mExtractedColors.load(this);
-            mHotseat.updateColor(mExtractedColors, !mPaused);
-            mWorkspace.getPageIndicator().updateColor(mExtractedColors);
-        }
+        mExtractedColors.load(this);
+        mHotseat.updateColor(mExtractedColors, !mPaused);
+        mWorkspace.getPageIndicator().updateColor(mExtractedColors);
     }
 
     private LauncherCallbacks mLauncherCallbacks;
@@ -960,6 +980,7 @@ public class Launcher extends BaseActivity
         if (mOnResumeState == State.WORKSPACE) {
             showWorkspace(false);
         } else if (mOnResumeState == State.APPS) {
+            mWorkspace.setVisibility(View.INVISIBLE);
             boolean launchedFromApp = (mWaitingForResume != null);
             // Don't update the predicted apps if the user is returning to launcher in the apps
             // view after launching an app, as they may be depending on the UI to be static to
@@ -1047,6 +1068,9 @@ public class Launcher extends BaseActivity
         // Refresh shortcuts if the permission changed.
         mModel.refreshShortcutsIfRequired();
 
+        if (mAllAppsController.isTransitioning()) {
+            mAppsView.setVisibility(View.VISIBLE);
+        }
         if (shouldShowDiscoveryBounce()) {
             mAllAppsController.showDiscoveryBounce();
         }
@@ -1727,7 +1751,9 @@ public class Launcher extends BaseActivity
             // If we are already on home, then just animate back to the workspace,
             // otherwise, just wait until onResume to set the state back to Workspace
             if (alreadyOnHome) {
-                showWorkspace(true);
+                if (!mAllAppsController.isDragging()) {
+                    showWorkspace(true);
+                }
             } else {
                 mOnResumeState = State.WORKSPACE;
             }
@@ -1855,6 +1881,7 @@ public class Launcher extends BaseActivity
                 .removeAccessibilityStateChangeListener(this);
 
         WallpaperColorInfo.getInstance(this).setOnThemeChangeListener(null);
+        mSettingsObserver.unregister();
 
         LauncherAnimUtils.onDestroyActivity();
 
@@ -2452,7 +2479,7 @@ public class Launcher extends BaseActivity
             throw new IllegalArgumentException("Input must have a valid intent");
         }
         boolean success = startActivitySafely(v, intent, item);
-        getUserEventDispatcher().logAppLaunch(v, intent); // TODO for discovered apps b/35802115
+        getUserEventDispatcher().logAppLaunch(v, intent, item.user); // TODO for discovered apps b/35802115
 
         if (success && v instanceof BubbleTextView) {
             mWaitingForResume = (BubbleTextView) v;
@@ -2509,8 +2536,11 @@ public class Launcher extends BaseActivity
 
         String pickerPackage = getString(R.string.wallpaper_picker_package);
         boolean hasTargetPackage = !TextUtils.isEmpty(pickerPackage);
-        if (hasTargetPackage) {
-            intent.setPackage(pickerPackage);
+        try {
+            if (hasTargetPackage && getPackageManager().getApplicationInfo(pickerPackage, 0).enabled) {
+                intent.setPackage(pickerPackage);
+            }
+        } catch (PackageManager.NameNotFoundException ex) {
         }
 
         intent.setSourceBounds(getViewBounds(v));
@@ -2602,7 +2632,7 @@ public class Launcher extends BaseActivity
                     String id = ((ShortcutInfo) info).getDeepShortcutId();
                     String packageName = intent.getPackage();
                     DeepShortcutManager.getInstance(this).startShortcut(
-                            packageName, id, intent.getSourceBounds(), optsBundle, info.user);
+                            packageName, id, intent, optsBundle, info.user);
                 } else {
                     // Could be launching some bookkeeping activity
                     startActivity(intent, optsBundle);
